@@ -12,7 +12,7 @@ fn main() -> Result<()> {
     let collection_id = Pubkey::from_str(&args[2].clone())?;
     let commitment = CommitmentConfig::from_str("confirmed")?;
     let timeout = Duration::from_secs(300);
-    let client = RpcClient::new_with_timeout_and_commitment(rpc.clone(), timeout, commitment);
+    let client = RpcClient::new_with_timeout_and_commitment(rpc, timeout, commitment);
 
     crawl_txs(&client, &collection_id)?;
 

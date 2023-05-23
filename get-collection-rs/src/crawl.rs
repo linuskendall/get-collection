@@ -2,7 +2,6 @@ use anyhow::Result;
 use mpl_token_metadata::{state::Metadata, ID};
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
-use serde_json;
 use solana_client::rpc_client::{GetConfirmedSignaturesForAddress2Config, RpcClient};
 use solana_client::rpc_config::RpcTransactionConfig;
 use solana_program::borsh::try_from_slice_unchecked;
@@ -36,9 +35,9 @@ impl Transaction {
 
 pub fn crawl_txs(client: &RpcClient, collection_id: &Pubkey) -> Result<()> {
     let mut all_signatures = Vec::new();
-    let mut signatures = client.get_signatures_for_address(&collection_id)?;
+    let mut signatures = client.get_signatures_for_address(collection_id)?;
 
-    while signatures.len() > 0 {
+    while !signatures.is_empty() {
         let last_sig = Signature::from_str(&signatures[signatures.len() - 1].signature)?;
         all_signatures.append(&mut signatures);
         let config = GetConfirmedSignaturesForAddress2Config {
@@ -47,7 +46,7 @@ pub fn crawl_txs(client: &RpcClient, collection_id: &Pubkey) -> Result<()> {
             limit: None,
             commitment: Some(CommitmentConfig::confirmed()),
         };
-        signatures = client.get_signatures_for_address_with_config(&collection_id, config)?;
+        signatures = client.get_signatures_for_address_with_config(collection_id, config)?;
     }
     let transactions = Arc::new(Mutex::new(Vec::new()));
 
@@ -107,8 +106,7 @@ pub fn crawl_txs(client: &RpcClient, collection_id: &Pubkey) -> Result<()> {
 fn get_metadata(client: &RpcClient, pubkey: &str) -> Result<Metadata> {
     let pubkey = &Pubkey::from_str(pubkey)?;
     let data = client
-        .get_account_data(pubkey)
-        .expect("Failed to get account data");
+        .get_account_data(pubkey)?;
     let metadata: Metadata = try_from_slice_unchecked(&data)?;
     Ok(metadata)
 }
