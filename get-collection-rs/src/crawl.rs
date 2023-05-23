@@ -85,14 +85,14 @@ pub fn crawl_txs(client: &RpcClient, collection_id: &Pubkey) -> Result<()> {
 
     metadata_accounts.par_iter().for_each(|m| {
         let mint_accounts = mint_accounts.clone();
-        let data = client
-            .get_account_data(&Pubkey::from_str(m).unwrap())
-            .unwrap();
-        let metadata: Metadata = try_from_slice_unchecked(&data).unwrap();
-        mint_accounts
-            .lock()
-            .unwrap()
-            .insert(metadata.mint.to_string());
+        match get_metadata(client, m) {
+            Ok(metadata) => {
+                mint_accounts.lock().unwrap().insert(metadata.mint.to_string());
+            }
+            Err(err) => {
+                println!("Failed to get metadata for {:?}: {:?}", m, err);
+            }
+        }
     });
 
     let mut file = std::fs::File::create(format!("{}_transactions.json", collection_id))?;
@@ -102,6 +102,15 @@ pub fn crawl_txs(client: &RpcClient, collection_id: &Pubkey) -> Result<()> {
     serde_json::to_writer(&mut file, &mint_accounts)?;
 
     Ok(())
+}
+
+fn get_metadata(client: &RpcClient, pubkey: &str) -> Result<Metadata> {
+    let pubkey = &Pubkey::from_str(pubkey)?;
+    let data = client
+        .get_account_data(pubkey)
+        .expect("Failed to get account data");
+    let metadata: Metadata = try_from_slice_unchecked(&data)?;
+    Ok(metadata)
 }
 
 fn is_verify_tx(tx: &Transaction) -> bool {
